@@ -22,9 +22,6 @@ public:
     // Interface Methods
     bool connectMiniX();
     bool disconnectMiniX();
-    double readVoltage();
-    double readCurrent();
-    double readTemperature();
     bool safetyChecks();
     void setVoltage(double voltage);
     void setCurrent(double voltage);
@@ -32,22 +29,12 @@ public:
 
 private:
     // Minix Setup and close Methods
-    bool findMinixDevice();
     int getConnectedDevices();
-    bool openDevice(const char* serialNumber);
-    bool openMPSSE();
     bool initializeMiniX();
     bool closeDevice();
-    bool setupTemperatureSensor();
-    bool setupClockDivisor();
-    void purgeMinixInfo();
-    void SetParametersToDefault();
 
     // Minix Checks
     bool connectionChecks();
-
-    // Minix Control Methods
-    void testread();
 
     //Global Data Variables
     //FTDI D2XX

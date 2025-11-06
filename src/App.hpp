@@ -9,7 +9,6 @@
 #include <functional>
 #include "TimeManager.hpp"
 #include "Debug.hpp"
-#include "DataIOHandler.hpp"
 #include "udpHandler.hpp"
 
 using namespace std;
@@ -24,11 +23,9 @@ private:
     std::mutex m_taskMutex;
 
 public:
-    //Modules
-    DIOHandler dataHandler;
     UDPHandler udpHandler;
 
-    Controller() : dataHandler(this), udpHandler() { if(systemInitializor()) run(); }
+    Controller() : udpHandler() { if(systemInitializor()) run(); }
     ~Controller(){}
 
     //Main Methods
@@ -41,25 +38,6 @@ public:
     void queueTask(std::function<void()> task);
     void processQueuedTasks();
     void processUDPData(string data);
-    // ----- THREAD SHARED DATA -----
-
-    // Shared Minix Data
-    atomic<double> m_latestMinixVoltage{0.0};
-    atomic<double> m_latestMinixCurrent{0.0};
-    atomic<double> m_latestMinixTemperature{0.0};
-    atomic<double> m_targetMinixVoltage{0.0};
-    atomic<double> m_targetMinixCurrent{0.0};
-    atomic<bool> m_minixDeviceFound{false};
-    atomic<bool> m_tryingToConnectMinix{false};
-    atomic<bool> m_minixOpened{false};
-    atomic<bool> m_connectedToMinix{false};
-
-    atomic<uint64_t> m_lastUpdateTimestamp{0};
-    atomic<bool> m_newDataAvailable{false};
-    atomic<bool> m_isMpsseOn{false};
-    atomic<bool> hvOn{false};
-    atomic<int> m_errorCount{0};
-    atomic<int> m_measurementCount{0};
 
     // Setup and config
     atomic<bool> isRunning{false};

@@ -10,8 +10,6 @@ bool Controller::systemInitializor() {
 
         //Initialize Data Handler
         Debug.Log("Initializing Data Handler...");
-        if(dataHandler.dataHandlerInit()){Debug.Log("Data Handler Initialized Successfully.");} 
-        else {Debug.Error("Data Handler Initialization Failed!"); CurrentStatus = false;}
 
         Debug.Log("Initializing UDP Handler...");
         if(udpHandler.start()){Debug.Log("UDP Handler Initialized Successfully.");} 
@@ -40,13 +38,11 @@ void Controller::stop() {
         isRunning = false;
         if (LogicThread.joinable()) LogicThread.join();
         //End logic here
-        dataHandler.disconnectMiniX();
         udpHandler.stop();
     }
 
 void Controller::logic(){
             elapsedMS = TimeM.elapsedMS(); // Measure elapsed time since last call
-            dataHandler.deviceStatusChecks(elapsedMS); // Device Auto Logic
             processQueuedTasks(); // Process any queued tasks from Python
 
             // UDP Message Processing
@@ -107,11 +103,9 @@ void Controller::processUDPData(string data) {
         } else if (data.substr(0, 12) == "SET_VOLTAGE:") {
             std::string voltage_str = data.substr(12);
             Debug.Log("UDP Command: Set Voltage to " + voltage_str + " kV");
-            dataHandler.setVoltage(std::stod(voltage_str));
         } else if (data.substr(0, 12) == "SET_CURRENT:") {
             std::string current_str = data.substr(12);
             Debug.Log("UDP Command: Set Current to " + current_str + " uA");
-            dataHandler.setCurrent(std::stod(current_str));
         } else {
             Debug.Log("UDP Command: Unknown command '" + data + "'");
         }

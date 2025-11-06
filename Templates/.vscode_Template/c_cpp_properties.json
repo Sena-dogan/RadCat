@@ -7,7 +7,7 @@
                 "${workspaceFolder}/src",
                 "${workspaceFolder}/src/devices",
                 "${workspaceFolder}/src/devices/comps",
-                "${workspaceFolder}/src/Included",
+                "${workspaceFolder}/src/Included/Windows",
                 "${env:ROOTSYS}/include",
                 "${env:QT_DIR}/include",
                 "${env:QT_DIR}/include/QtCore",
