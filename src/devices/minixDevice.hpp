@@ -16,14 +16,11 @@ public:
     virtual double readValue(const std::string& parameter) override;
     virtual bool setValue(const std::string& parameter, double value) override;
 
-    // Additional MiniX-specific methods can be added here
+    // Additional Interface Methods
     bool initialize();
     void setVoltage(double voltage);
     void setCurrent(double voltage);
     void setHVOnOff(bool on);
-    bool initializeMiniX();
-    void testread();
-
 
     // Hardware State Variables
     unsigned char LowByteHiLowState;
@@ -38,6 +35,16 @@ private:
     bool safetyChecks();
     bool setupTemperatureSensor();
     bool setupClockDivisor();
+    void setClockDivisor(unsigned char* tx, int& pos, int clockDivisor = 3);
+
+    // Conversion Utilities
+    double convertToVoltage(unsigned char rx0, unsigned char rx1, double VRef = 4.096, double DAC_ADC_Scale = 4096.0, double HighVoltageConversionFactor = 10.0);
+    double convertToCurrent(unsigned char rx0, unsigned char rx1, double VRef = 4.096, double DAC_ADC_Scale = 4096.0, double CurrentConversionFactor = 50.0);
+    double convertToTemperature(unsigned char MSB, unsigned char LSB, bool isF = false);
+
+    // Temperature sensor control
+    void activateTemperatureSensor(unsigned char* tx, int& pos, unsigned char& HighByteHiLowState);
+    void deactivateTemperatureSensor(unsigned char* tx, int& pos, unsigned char& HighByteHiLowState);
 
     // Minix Components
     FTDIConnection& connection = getComponent<FTDIConnection>();
@@ -69,6 +76,5 @@ private:
     double WattageMax;
     double SafetyMargin;
     double SafeWattageMW;
-
 
 };

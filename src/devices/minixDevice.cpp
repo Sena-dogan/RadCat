@@ -2,14 +2,12 @@
 #include "ftd2xx.h"
 #include "debug.hpp"
 #include "utilities.hpp"
-#include "minxUtils.hpp"
 
 REGISTER_DEVICE(MiniXDevice, "Mini-X Device");
 using namespace std;
-using namespace MinixUtilities;
 using namespace Utilities;
 
-#pragma region byte and pin Definitions
+#pragma region Bit Definitions
 
 /*
 LOW
@@ -113,7 +111,6 @@ void MiniXDevice::setupTasks() {
     addTask([this]{ currentVoltage = readVoltage(); }, 3000);
 }
 
-
 double MiniXDevice::readValue(const std::string& parameter) {
     // Implement reading values based on the parameter
     return 0.0;
@@ -124,6 +121,19 @@ bool MiniXDevice::setValue(const std::string& parameter, double value) {
     return true;
 }
 
+bool MiniXDevice::initialize() {
+    if (!setupTemperatureSensor()) return false;
+    if (!setupClockDivisor()) return false;
+
+    //setVoltage(0.0);
+    //sleepMs(200);
+    //setCurrent(0.0);
+
+    if constexpr (debug) Debug.Log("MiniX initialization completed successfully.");
+    return true;
+}
+
+// Minix Self Functions
 
 bool MiniXDevice::setupClockDivisor(){
     unsigned char tx[10]; DWORD ret_bytes; int pos = 0;
@@ -185,26 +195,11 @@ bool MiniXDevice::setupTemperatureSensor(){
     return true;
 }
 
-bool MiniXDevice::initialize() {
-    if (!setupTemperatureSensor()) return false;
-    if (!setupClockDivisor()) return false;
-
-    //setVoltage(0.0);
-    //sleepMs(200);
-    //setCurrent(0.0);
-
-    if constexpr (debug) Debug.Log("MiniX initialization completed successfully.");
-    return true;
-}
-
-
-// Minix Self Functions
-
 double MiniXDevice::readVoltage() {
     if (!connection.isDeviceOpen() || !connection.isMPSSEOn()) {Debug.Error("Device not open or MPSSE not enabled for temperature reading.");return -1.0;}
     unsigned char tx[100], rx[100]; DWORD ret_bytes; int pos = 0;
 
-    MinixUtilities::setClockDivisor(tx, pos);
+    setClockDivisor(tx, pos);
     
     // Start condition - take ADC clock enable low
     tx[pos++] = CMD_SET_DATA_BITS_LOWBYTE;
@@ -248,7 +243,7 @@ double MiniXDevice::readVoltage() {
     if (!Utilities::validateAndLogData(rx, 2, "HV ADC")) {return -1.0;}
 
     // Convert ADC result to voltage (bit manipulation handled in utility)
-    double voltage = MinixUtilities::convertToVoltage(rx[0], rx[1]);
+    double voltage = convertToVoltage(rx[0], rx[1]);
 
     Debug.Log("Read voltage: " + std::to_string(voltage) + " kV");
     return voltage;
@@ -258,7 +253,7 @@ double MiniXDevice::readCurrent() {
     if (!connection.isDeviceOpen() || !connection.isMPSSEOn()) {Debug.Error("Device not open or MPSSE not enabled for temperature reading.");return -1.0;}
     unsigned char tx[100], rx[100]; DWORD ret_bytes; int pos = 0;
 
-    MinixUtilities::setClockDivisor(tx, pos);
+    setClockDivisor(tx, pos);
     
     // Start condition - take ADC clock enable low
     tx[pos++] = CMD_SET_DATA_BITS_LOWBYTE;
@@ -300,7 +295,7 @@ double MiniXDevice::readCurrent() {
     if (ret_bytes < 2) {Debug.Error("Current ADC too few data bytes returned: ", ret_bytes);return -1.0;}
     if (!Utilities::validateAndLogData(rx, 2, "Current ADC")) {return -1.0;}
 
-    double current = MinixUtilities::convertToCurrent(rx[0], rx[1]);
+    double current = convertToCurrent(rx[0], rx[1]);
 
     Debug.Log("Read current: " + std::to_string(current) + " uA");
     return current;
@@ -347,7 +342,7 @@ double MiniXDevice::readTemperature() {
     if (ret_bytes < 2) {Debug.Error("Temperature sensor too few data bytes returned: ", ret_bytes);return -1.0;}
     if (!Utilities::validateAndLogData(rx, 2, "Temperature Sensor")) {return -1.0;}
     // Process temperature result (different from ADC - direct MSB/LSB)
-    double temperature = MinixUtilities::convertToTemperature(rx[1], rx[0], false); // Celsius
+    double temperature = convertToTemperature(rx[1], rx[0], false); // Celsius
     if constexpr (debug) Debug.Log("Read temperature: " + std::to_string(temperature) + " C");
     return temperature;
 }
@@ -412,4 +407,67 @@ bool MiniXDevice::safetyChecks() {
 
     return true;
 }
+
+void MiniXDevice::setClockDivisor(unsigned char* tx, int& pos, int clockDivisor) {
+        tx[pos++] = CMD_SET_CLK_DIVISOR;
+        tx[pos++] = clockDivisor & 0xFF;
+        tx[pos++] = (clockDivisor >> 8) & 0xFF;
+    }
+
+double MiniXDevice::convertToVoltage(unsigned char rx0, unsigned char rx1, double VRef, double DAC_ADC_Scale, double HighVoltageConversionFactor) {
+    // Extract 12-bit ADC value using original main.cpp bit manipulation
+    unsigned char msb = rx0 >> 3;
+    unsigned char lsb = ((rx0 & 0x07) << 5) | (rx1 >> 3);
+    int ivolts = (msb << 8) | lsb;
+    
+    // Convert ADC value to voltage using the reference voltage and scale
+    double voltage = (static_cast<double>(ivolts) / DAC_ADC_Scale * VRef) * HighVoltageConversionFactor;
+
+    Debug.Log("MSB: " + std::to_string(msb) + ", LSB: " + std::to_string(lsb) + 
+                ", ADC Value: " + std::to_string(ivolts) + 
+                ", Converted Voltage: " + std::to_string(voltage) + "V");
+
+    return voltage;
+    }
+
+double MiniXDevice::convertToCurrent(unsigned char rx0, unsigned char rx1, double VRef, double DAC_ADC_Scale, double CurrentConversionFactor) {
+        // Extract 12-bit ADC value using original main.cpp bit manipulation
+        unsigned char msb = rx0 >> 3;
+        unsigned char lsb = ((rx0 & 0x07) << 5) | (rx1 >> 3);
+        int ivolts = (msb << 8) | lsb;
+        
+        // Convert ADC value to voltage first, then to current
+        double current = (static_cast<double>(ivolts) / DAC_ADC_Scale * VRef) * CurrentConversionFactor;
+
+        Debug.Log("MSB: " + std::to_string(msb) + ", LSB: " + std::to_string(lsb) + 
+                  ", ADC Value: " + std::to_string(ivolts) + 
+                  ", Converted Current: " + std::to_string(current) + "µA");
+
+        return current;
+    }
+
+double MiniXDevice::convertToTemperature(unsigned char MSB, unsigned char LSB, bool isF) {
+        int tempRaw = (MSB << 4) + (LSB >> 4); double temp_c;
+        if (MSB >= 0x80) { temp_c = static_cast<double>(tempRaw - 4096) * 0.0625; } 
+        else { temp_c = static_cast<double>(tempRaw) * 0.0625; }
+        double temperature = isF ? (temp_c * 9.0 / 5.0 + 32.0) : temp_c;
+        // Debug.Log("MSB: " + std::to_string(MSB) + ", LSB: " + std::to_string(LSB) + ", Raw 12-bit: " + std::to_string(tempRaw) + ", Temperature: " + std::to_string(temperature) + (isF ? "°F" : "°C"));
+        return temperature;
+    }
+
+void MiniXDevice::activateTemperatureSensor(unsigned char* tx, int& pos, unsigned char& HighByteHiLowState) {
+        tx[pos++] = CMD_SET_DATA_BITS_HIGHBYTE;
+        SET(HighByteHiLowState, TSCS); 
+        tx[pos++] = HighByteHiLowState;
+        tx[pos++] = OUTPUTMODE_H;
+        // Debug.Log("Activated temperature sensor (TSCS low).");
+}
+
+void MiniXDevice::deactivateTemperatureSensor(unsigned char* tx, int& pos, unsigned char& HighByteHiLowState) {
+        tx[pos++] = CMD_SET_DATA_BITS_HIGHBYTE;
+        CLEAR(HighByteHiLowState, TSCS);
+        tx[pos++] = HighByteHiLowState;
+        tx[pos++] = OUTPUTMODE_H;
+        // Debug.Log("Deactivated temperature sensor (TSCS high).");
+    }
 
