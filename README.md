@@ -28,6 +28,11 @@
 
 ---
 
+## 📜 Contributors
+See the full list in [CONTRIBUTORS.md](CONTRIBUTORS.md)
+
+---
+
 ## 📘 Explore the Wiki
 
 RadCat has a growing [**Wiki**](https://github.com/yagizdkurt/RadCat/wiki) full of guides, setup instructions, and technical documentation.  
