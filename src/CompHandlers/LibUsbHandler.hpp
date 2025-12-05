@@ -5,14 +5,15 @@
 #include <string>
 #include "UsbConnection.hpp"
 
-struct ScannedDeviceInfo {
-    libusb_device* device;
-    libusb_device_descriptor descriptor;
-    int scanIndex;
-};
-
 class LibUsbHandler : public BaseComponentHandler {
 public:
+
+    struct ScannedDeviceInfo {
+        libusb_device* device;
+        libusb_device_descriptor descriptor;
+        int scanIndex;
+    };
+
     constexpr static bool debug = true;
     static LibUsbHandler& Instance(){static LibUsbHandler instance; return instance;}
     libusb_context* getContext() { return ctx; }
@@ -32,7 +33,6 @@ public:
     void closeDevice(libusb_device_handle* handle);
     int readData(libusb_device_handle* handle, unsigned char* data, int length, unsigned int timeout);
     int writeData(libusb_device_handle* handle, const unsigned char* data, int length, unsigned int timeout);
-
 
 private:
     libusb_context* ctx = nullptr;

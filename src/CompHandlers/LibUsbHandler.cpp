@@ -36,7 +36,7 @@ bool LibUsbHandler::shutdown() {
     }
 }
 
-std::vector<ScannedDeviceInfo> LibUsbHandler::scanDevices() {
+std::vector<LibUsbHandler::ScannedDeviceInfo> LibUsbHandler::scanDevices() {
     if(!ctx) { Debug.Error("LibUsbHandler scanDevices called but context is null."); return std::vector<ScannedDeviceInfo>(); }
     libusb_device **list;
     ssize_t cnt = libusb_get_device_list(ctx, &list);
@@ -70,6 +70,10 @@ bool LibUsbHandler::deviceMatch(ScannedDeviceInfo info, UsbConnection& usbCompon
     usbComponent.deviceInfo.pid = info.descriptor.idProduct;
     usbComponent.deviceInfo.device = info.device;
     usbComponent.deviceInfo.busNumber = libusb_get_bus_number(info.device);
+
+    int r = libusb_open(info.device, &usbComponent.deviceHandle);
+    if (r < 0) { Debug.Error("Failed to open USB device: " , r); return false; }
+
     libusb_ref_device(info.device);
     return true;
 }

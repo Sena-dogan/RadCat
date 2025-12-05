@@ -11,6 +11,10 @@ void DeviceHandler::deviceLogicUpdate() {
     }
 }
 
+
+// Scans for devices using all available handlers and attempts to match them to registered device types.
+// Matched devices are instantiated and added to the activeDevices list. Yet they are not connected automatically.
+// Neither their automation starts, they are waiting for explicit connect() calls by the UI. This only sets up the devices and UI entries.
 void DeviceHandler::deviceScan() {
     ftdiScan();
     libUsbScan();
@@ -20,24 +24,28 @@ void DeviceHandler::libUsbScan() {
     if constexpr(debug) Debug.Log("Scanning for LibUsb devices...");
     LibUsbHandler& libUsbHandler = LibUsbHandler::Instance();
 
-    std::vector<ScannedDeviceInfo> scannedDevices = libUsbHandler.scanDevices();
+    std::vector<LibUsbHandler::ScannedDeviceInfo> scannedDevices = libUsbHandler.scanDevices();
     if (scannedDevices.empty()) { if constexpr(debug) Debug.Warn("No LibUsb devices found during scan."); return; }
     auto UsbDevices = DeviceRegistry::getRegisteredDevicesWithComponents<UsbConnection>();
 
-    for(const ScannedDeviceInfo info : scannedDevices) { // For each detected LibUsb device
+    for(const LibUsbHandler::ScannedDeviceInfo& info : scannedDevices) { // For each detected LibUsb device
         uint16_t vid = info.descriptor.idVendor;
         uint16_t pid = info.descriptor.idProduct;
         
         // Check active devices to see if already assigned
+        bool alreadyAssigned = false;
         for (auto& device : activeDevices) {
             auto* usbComp = device->systemGetComponent<UsbConnection>();
             if (usbComp) {
                 if(usbComp->deviceInfo.busNumber == libusb_get_bus_number(info.device) && usbComp->deviceInfo.vid == vid && usbComp->deviceInfo.pid == pid) {
                     if constexpr(debug) Debug.Log("LibUsb device VID: " , vid , " PID: " , pid , " is already assigned to an active device. Skipping.");
-                    continue;
+                    alreadyAssigned = true;
+                    break;
                 }
             }
         }
+        if (alreadyAssigned) continue;
+
 
         // Check all registered devices for potential LibUsb matches
         // But check VID first bcs it's the easiest
@@ -64,63 +72,78 @@ void DeviceHandler::libUsbScan() {
                 auto matchedDevice = entry->creator();
                 auto* usbComp = matchedDevice->systemGetComponent<UsbConnection>();
 
-                if(!libUsbHandler.deviceMatch(info, *usbComp)) Debug.Error("Failed to match device " + deviceInfo.deviceName);
+                if ( !libUsbHandler.deviceMatch(info, *usbComp) ) {
+                    if constexpr(debug) Debug.Warn("Device match function failed for device: " , deviceName);
+                    continue; // Dont break skip for next device
+                }
+
                 activeDevices.push_back(std::move(matchedDevice));
                 break;
             }
         }
+        if constexpr(debug) { Debug.Log("Scanned LibUsb Device not matched - VID: " , vid , " PID: " , pid ); }
     }
+
     libUsbHandler.cleanScannedDeviceReferences();
 }
 
 void DeviceHandler::ftdiScan() {
     if constexpr(debug) Debug.Log("Scanning for FTDI devices...");
     FTDIHandler& ftdiHandler = FTDIHandler::Instance();
-    FT_STATUS status;
-
-    int ConnectedFTDIDevices = ftdiHandler.getDeviceCount();
-    if (ConnectedFTDIDevices <= 0) { if constexpr(debug) Debug.Warn("No FTDI devices found during scan."); return; }
+    
+    std::vector<FTDIHandler::ScannedDeviceInfo> scannedDevices = ftdiHandler.scanDevices();
+    if (scannedDevices.empty()) { if constexpr(debug) Debug.Warn("No FTDI devices found during scan."); return; }
     auto FTDIDevices = DeviceRegistry::getRegisteredDevicesWithComponents<FTDIConnection>();
 
-    for (int i = 0; i < ConnectedFTDIDevices; i++) { // For each detected FTDI device
-        for (auto& device : activeDevices) { // Check if already assigned
+    for (const FTDIHandler::ScannedDeviceInfo& scannedDevice : scannedDevices) {
+        
+        // Check active devices
+        bool alreadyAssigned = false;
+        for (auto& device : activeDevices) {
             auto* ftdiComp = device->systemGetComponent<FTDIConnection>();
-            if (ftdiComp && ftdiComp->getFTDIIndex() == static_cast<int>(i)) {
-                if constexpr(debug) Debug.Log("FTDI device at index " , i , " is already assigned to an active device. Skipping.");
-                continue;
+            if (ftdiComp && ftdiComp->getFTDIIndex() == scannedDevice.scanIndex) {
+                if constexpr(debug) Debug.Log("FTDI device at index " , scannedDevice.scanIndex , " is already assigned to an active device. Skipping.");
+                alreadyAssigned = true;
+                break;
             }
         }
-
-        FT_DEVICE_LIST_INFO_NODE devInfo;
-        status = FT_GetDeviceInfoDetail(i, &devInfo.Flags, &devInfo.Type, &devInfo.ID, &devInfo.LocId, devInfo.SerialNumber, devInfo.Description, &devInfo.ftHandle);
-        if (status != FT_OK) {Debug.Error("Def inf fail " , i , " : " , status); continue;}
-        if constexpr(debug) Debug.Log("Found FTDI device: " + std::string(devInfo.Description) + " (Serial: " + std::string(devInfo.SerialNumber) + ")");
+        if (alreadyAssigned) continue;
 
         // Check all registered devices for potential FTDI matches
-        for (const auto& entry : FTDIDevices) {
-            if constexpr(debug) Debug.Log("Checking registered device: " + entry->deviceInfo.deviceName + " against FTDI device: " + std::string(devInfo.Description));
+        for (const auto& [deviceName, entry] : FTDIDevices) {
+            if constexpr(debug) Debug.Log("Checking registered device: " + deviceName + " against FTDI device: " + std::string(scannedDevice.devInfo.Description));
             bool isMatch = false;
 
-            if (entry->deviceInfo.serialNumber == std::string(devInfo.SerialNumber)) { isMatch = true; } //Serial Check
+            // Serial Number Check
+            if (entry.deviceInfo.serialNumber == std::string(scannedDevice.devInfo.SerialNumber)) isMatch = true;
             
-            std::string foundDeviceName = std::string(devInfo.Description); //Name Check
-            std::string foundSerial = std::string(devInfo.SerialNumber);
-            std::string deviceNameLower = entry->deviceInfo.deviceName;
+            if(!isMatch){ // VID/PID Check
+                uint16_t vid = (scannedDevice.devInfo.ID & 0xFFFF);
+                uint16_t pid = ((scannedDevice.devInfo.ID >> 16) & 0xFFFF);
+                if (entry.deviceInfo.vid != 0 && entry.deviceInfo.vid == vid &&
+                    entry.deviceInfo.pid != 0 && entry.deviceInfo.pid == pid) isMatch = true;
+            }
+
+            if(!isMatch){ // Name Check
+            std::string foundDeviceName = std::string(scannedDevice.devInfo.Description);
+            std::string deviceNameLower = deviceName;
             std::string foundDeviceNameLower = foundDeviceName;
             std::transform(deviceNameLower.begin(), deviceNameLower.end(), deviceNameLower.begin(), ::tolower);
             std::transform(foundDeviceNameLower.begin(), foundDeviceNameLower.end(), foundDeviceNameLower.begin(), ::tolower);
             if (foundDeviceNameLower.find(deviceNameLower) != std::string::npos || 
                 deviceNameLower.find(foundDeviceNameLower) != std::string::npos) isMatch = true;
+            }
             
             if (isMatch) { 
-                if constexpr(debug) Debug.Log("MATCH FOUND! Device '", entry->deviceInfo.deviceName , "' matches FTDI device '", foundDeviceName);
-                auto matchedDevice = entry->creator();
+                if constexpr(debug) Debug.Log("MATCH FOUND! Device: ", deviceName);
+                auto matchedDevice = entry.creator();
                 auto* ftdiComp = matchedDevice->systemGetComponent<FTDIConnection>();
-                ftdiComp->setFTDIIndex(static_cast<int>(i));
-                ftdiComp->setDevInfo(devInfo);
+                ftdiComp->setFTDIIndex(scannedDevice.scanIndex);
+                ftdiComp->setDevInfo(scannedDevice.devInfo);
                 activeDevices.push_back(std::move(matchedDevice));
                 break;
             }
+
         }
     }
 }
