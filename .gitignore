@@ -39,3 +39,5 @@
 Build.bat
 CMakeLists.txt
 .vscode/
+build/
+dist/

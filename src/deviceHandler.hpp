@@ -2,12 +2,36 @@
 #include <vector>
 #include <memory>
 #include "deviceCore.hpp"
+#include "FTDIHandler.hpp"
+#include "LibUsbHandler.hpp"
 
 
 class DeviceHandler {
 public:
+    struct FoundDeviceInfo {
+        enum class ConnectionType {
+            FTDI,
+            LibUsb,
+            Other
+        } connectionType;
+        const DeviceRegistry::RegistryEntry* deviceRegistryEntry;
+
+        //Matched data types
+        bool serialMatch = false;
+        bool nameMatch = false;
+        bool vidMatch = false;
+        bool pidMatch = false;
+        uint8_t matchScore = 0;
+
+        //LibUsb Data
+        std::unique_ptr<LibUsbHandler::ScannedDeviceInfo> LibUsbScannedDeviceInfo = nullptr;
+
+        //FTDI Data
+
+    };
+    std::vector<FoundDeviceInfo> foundDevices;
     std::vector<std::unique_ptr<EmptyDevice>> activeDevices;
-    std::vector<const DeviceRegistry::RegistryEntry*> foundDevices;
+
     
     const static bool debug = false;
 
@@ -15,6 +39,12 @@ public:
     void libUsbScan();
     void deviceScan();
     void deviceLogicUpdate();
+
+    void activateDevice(FoundDeviceInfo& DeviceInfo);
     
+
+private:
+    LibUsbHandler& libUsbHandler = LibUsbHandler::Instance();
+    FTDIHandler& ftdiHandler = FTDIHandler::Instance();
     
 };

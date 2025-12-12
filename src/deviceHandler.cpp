@@ -2,15 +2,12 @@
 #include "debug.hpp"
 #include "ftd2xx.h"
 #include "allComponents.hpp"
-#include "FTDIHandler.hpp"
-#include "LibUsbHandler.hpp"
 
 void DeviceHandler::deviceLogicUpdate() {
     for (auto& device : activeDevices) {
         device->systemUpdate();
     }
 }
-
 
 // Scans for devices using all available handlers and attempts to match them to registered device types.
 // Matched devices are instantiated and added to the activeDevices list. Yet they are not connected automatically.
@@ -22,7 +19,6 @@ void DeviceHandler::deviceScan() {
 
 void DeviceHandler::libUsbScan() {
     if constexpr(debug) Debug.Log("Scanning for LibUsb devices...");
-    LibUsbHandler& libUsbHandler = LibUsbHandler::Instance();
 
     std::vector<LibUsbHandler::ScannedDeviceInfo> scannedDevices = libUsbHandler.scanDevices();
     if (scannedDevices.empty()) { if constexpr(debug) Debug.Warn("No LibUsb devices found during scan."); return; }
@@ -34,62 +30,58 @@ void DeviceHandler::libUsbScan() {
         // Check active devices to see if already assigned
         bool alreadyAssigned = false;
         for (auto& device : activeDevices) {
-            auto* usbComp = device->systemGetComponent<UsbConnection>();
-            if (usbComp) {
-                if(usbComp->deviceInfo.busNumber == libusb_get_bus_number(info.device) && usbComp->deviceInfo.vid == vid && usbComp->deviceInfo.pid == pid) {
-                    if constexpr(debug) Debug.Log("LibUsb device VID: " , vid , " PID: " , pid , " is already assigned to an active device. Skipping.");
-                    alreadyAssigned = true;
-                    break;
-                }
+            UsbConnection* usbComp = device->systemGetComponent<UsbConnection>();
+            if(usbComp && usbComp->deviceInfo.busNumber == libusb_get_bus_number(info.device) && usbComp->deviceInfo.vid == vid && usbComp->deviceInfo.pid == pid) {
+                if constexpr(debug) Debug.Log("LibUsb device VID: " , vid , " PID: " , pid , " is already assigned to an active device. Skipping.");
+                alreadyAssigned = true;
+                break;
             }
         }
         if (alreadyAssigned) continue;
 
-
         // Check all registered devices for potential LibUsb matches
-        // But check VID first bcs it's the easiest
         auto UsbDevices = DeviceRegistry::getRegisteredDevicesWithComponents<UsbConnection>();
         for (const auto& entry : UsbDevices) {
             const DeviceRegistry::RegistryEntry::DeviceInfo& deviceInfo = entry->deviceInfo;
-            
-            if (deviceInfo.vid != vid) continue; 
-            bool isMatch = false;
+            FoundDeviceInfo foundDevice;
+
+            // VID Check
+            if (deviceInfo.vid == vid){
+                foundDevice.vidMatch = true;
+                foundDevice.matchScore++;
+            }
 
             // PID Check
             uint16_t pid = info.descriptor.idProduct;
-            if (deviceInfo.pid != 0 && deviceInfo.pid == pid) { isMatch = true; }
+            if (deviceInfo.pid == 0 && deviceInfo.pid == pid){
+                foundDevice.pidMatch = true;
+                foundDevice.matchScore++;
+            }
 
             //TODO: Serial Number Check
 
-            // Name Check
-            //TODO: upper lover case insensitive comparison 
+            // Name Check TODO: upper lover case insensitive comparison 
             std::string foundDeviceName = deviceInfo.deviceName;
-            if(foundDeviceName.find(deviceInfo.deviceName) != std::string::npos || deviceInfo.deviceName.find(foundDeviceName) != std::string::npos) isMatch = true;
-
-            // Finalize Match
-            if (isMatch) {
-                if constexpr(debug) Debug.Log("MATCH FOUND! Device : " , deviceInfo.deviceName);
-                auto matchedDevice = entry->creator();
-                auto* usbComp = matchedDevice->systemGetComponent<UsbConnection>();
-
-                if ( !libUsbHandler.deviceMatch(info, *usbComp) ) {
-                    if constexpr(debug) Debug.Warn("Device match function failed for device: " , deviceInfo.deviceName);
-                    continue; // Dont break skip for next device
-                }
-
-                activeDevices.push_back(std::move(matchedDevice));
-                break;
+            if(foundDeviceName.find(deviceInfo.deviceName) != std::string::npos 
+            || deviceInfo.deviceName.find(foundDeviceName) != std::string::npos){
+                foundDevice.nameMatch = true;
+                foundDevice.matchScore++;
             }
-        }
-        if constexpr(debug) { Debug.Log("Scanned LibUsb Device not matched - VID: " , vid , " PID: " , pid ); }
-    }
 
-    libUsbHandler.cleanScannedDeviceReferences();
+            if(foundDevice.matchScore <= 2) continue; //Not enough matches
+            
+            if constexpr(debug) Debug.Log("MATCH FOUND! Device : " , deviceInfo.deviceName);
+            foundDevice.connectionType = FoundDeviceInfo::ConnectionType::LibUsb;
+            foundDevice.deviceRegistryEntry = entry;
+            foundDevice.LibUsbScannedDeviceInfo = std::make_unique<LibUsbHandler::ScannedDeviceInfo>(std::move(info));
+            foundDevices.push_back(foundDevice);
+            break;
+        }
+    }
 }
 
 void DeviceHandler::ftdiScan() {
     if constexpr(debug) Debug.Log("Scanning for FTDI devices...");
-    FTDIHandler& ftdiHandler = FTDIHandler::Instance();
     
     std::vector<FTDIHandler::ScannedDeviceInfo> scannedDevices = ftdiHandler.scanDevices();
     if (scannedDevices.empty()) { if constexpr(debug) Debug.Warn("No FTDI devices found during scan."); return; }
@@ -109,12 +101,13 @@ void DeviceHandler::ftdiScan() {
         }
         if (alreadyAssigned) continue;
 
+
         // Check all registered devices for potential FTDI matches
+        bool isMatch = false;
         for (const auto& entry : FTDIDevices) {
             const std::string& deviceName = entry->deviceInfo.deviceName;
             if constexpr(debug) Debug.Log("Checking registered device: " + deviceName + " against FTDI device: " + std::string(scannedDevice.devInfo.Description));
-            bool isMatch = false;
-
+            
             // Serial Number Check
             if (entry->deviceInfo.serialNumber == std::string(scannedDevice.devInfo.SerialNumber)) isMatch = true;
             
@@ -147,3 +140,24 @@ void DeviceHandler::ftdiScan() {
         }
     }
 }
+
+void DeviceHandler::activateDevice(FoundDeviceInfo& DeviceInfo) {
+    // Create device instance
+    auto matchedDevice = DeviceInfo.deviceRegistryEntry->creator();
+
+    if (DeviceInfo.connectionType == FoundDeviceInfo::ConnectionType::FTDI) {
+        FTDIConnection* ftdiComp = matchedDevice->systemGetComponent<FTDIConnection>();
+        
+    } 
+    else if (DeviceInfo.connectionType == FoundDeviceInfo::ConnectionType::LibUsb) {
+        UsbConnection* usbComp = matchedDevice->systemGetComponent<UsbConnection>();
+
+        if ( !libUsbHandler.deviceMatch(DeviceInfo.LibUsbScannedDeviceInfo, *usbComp) ) return; // Matching failed
+
+    }
+
+
+
+    activeDevices.push_back(std::move(matchedDevice));
+}
+
