@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import RadCat
 
 ApplicationWindow {
     id: mainWindow
@@ -12,7 +13,13 @@ ApplicationWindow {
 
     menuBar: AppMenuBar {}
 
+    // State to toggle between Empty View and List View
+    property bool isScanningMode: false
+
+    // --- 1. EMPTY STATE VIEW ---
     ColumnLayout {
+        // Explicitly accessing 'mainWindow.isScanningMode' to avoid lint warnings
+        visible: !mainWindow.isScanningMode
         spacing: 25
         anchors.centerIn: parent
 
@@ -39,7 +46,72 @@ ApplicationWindow {
         ScanButton {
             buttonText: "Scan for Devices"
             Layout.alignment: Qt.AlignHCenter
-            onClicked: console.log("Scanning started...")
+            onClicked: {
+                console.log("Switching to list view.");
+                mainWindow.isScanningMode = true;
+            }
+        }
+    }
+
+    // --- 2. DEVICE LIST VIEW ---
+    ColumnLayout {
+        visible: mainWindow.isScanningMode
+        anchors.fill: parent
+        anchors.margins: 20
+
+        // Header Row
+        RowLayout {
+            Layout.fillWidth: true
+            Button {
+                id: backButton
+                text: "← Back"
+                onClicked: mainWindow.isScanningMode = false
+                background: Rectangle {
+                    color: "transparent"
+                }
+                contentItem: Text {
+                    text: backButton.text
+                    color: "#58a6ff"
+                    font.bold: true
+                }
+            }
+            Text {
+                text: "Discovered Devices (3)"
+                color: "white"
+                font.pixelSize: 20
+                font.bold: true
+            }
+            Item {
+                Layout.fillWidth: true
+            } // Spacer
+        }
+
+        // List View
+        ListView {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            clip: true
+            spacing: 15
+
+            // Mock Data Model
+            // Property names here must match 'required property' names in delegate
+            model: ListModel {
+                ListElement {
+                    name: "Gamma Detector A"
+                    status: "match"
+                }
+                ListElement {
+                    name: "Spectrometer X200"
+                    status: "partial"
+                }
+                ListElement {
+                    name: "Unknown USB Device"
+                    status: "mismatch"
+                }
+            }
+
+            // Using the delegate without manual property assignment
+            delegate: DeviceDelegate {}
         }
     }
 }
