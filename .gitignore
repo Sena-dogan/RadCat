@@ -28,6 +28,9 @@
 # debug information files
 *.dwo
 
+# qml
+.qmlls.ini
+
 Build.bat
 CMakeLists.txt
 .vscode/

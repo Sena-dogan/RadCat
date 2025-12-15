@@ -105,38 +105,46 @@ void DeviceHandler::ftdiScan() {
         // Check all registered devices for potential FTDI matches
         bool isMatch = false;
         for (const auto& entry : FTDIDevices) {
-            const std::string& deviceName = entry->deviceInfo.deviceName;
-            if constexpr(debug) Debug.Log("Checking registered device: " + deviceName + " against FTDI device: " + std::string(scannedDevice.devInfo.Description));
+            const DeviceRegistry::RegistryEntry::DeviceInfo& deviceInfo = entry->deviceInfo;
+            FoundDeviceInfo foundDevice;
             
             // Serial Number Check
-            if (entry->deviceInfo.serialNumber == std::string(scannedDevice.devInfo.SerialNumber)) isMatch = true;
-            
-            if(!isMatch){ // VID/PID Check
-                uint16_t vid = (scannedDevice.devInfo.ID & 0xFFFF);
-                uint16_t pid = ((scannedDevice.devInfo.ID >> 16) & 0xFFFF);
-                if (entry->deviceInfo.vid != 0 && entry->deviceInfo.vid == vid &&
-                    entry->deviceInfo.pid != 0 && entry->deviceInfo.pid == pid) isMatch = true;
+            if (entry->deviceInfo.serialNumber == std::string(scannedDevice.devInfo.SerialNumber)){
+                foundDevice.matchData.serialMatch = true;
+                foundDevice.matchData.matchScore++;
             }
-
-            if(!isMatch){ // Name Check
+            
+            // Vid Pid Check
+            uint16_t vid = (scannedDevice.devInfo.ID & 0xFFFF);
+            uint16_t pid = ((scannedDevice.devInfo.ID >> 16) & 0xFFFF);
+            if (entry->deviceInfo.vid != 0 && entry->deviceInfo.vid == vid) {
+                foundDevice.matchData.vidMatch = true;
+                foundDevice.matchData.matchScore++;
+            }
+            if (entry->deviceInfo.pid != 0 && entry->deviceInfo.pid == pid) {
+                foundDevice.matchData.pidMatch = true;
+                foundDevice.matchData.matchScore++;
+            }
+            
             std::string foundDeviceName = std::string(scannedDevice.devInfo.Description);
-            std::string deviceNameLower = deviceName;
+            std::string deviceNameLower = deviceInfo.deviceName;
             std::string foundDeviceNameLower = foundDeviceName;
             std::transform(deviceNameLower.begin(), deviceNameLower.end(), deviceNameLower.begin(), ::tolower);
             std::transform(foundDeviceNameLower.begin(), foundDeviceNameLower.end(), foundDeviceNameLower.begin(), ::tolower);
             if (foundDeviceNameLower.find(deviceNameLower) != std::string::npos || 
-                deviceNameLower.find(foundDeviceNameLower) != std::string::npos) isMatch = true;
-            }
+                deviceNameLower.find(foundDeviceNameLower) != std::string::npos){
+                foundDevice.matchData.nameMatch = true;
+                foundDevice.matchData.matchScore++;
+                }
             
-            if (isMatch) { 
-                if constexpr(debug) Debug.Log("MATCH FOUND! Device: ", deviceName);
-                auto matchedDevice = entry->creator();
-                auto* ftdiComp = matchedDevice->systemGetComponent<FTDIConnection>();
-                ftdiComp->setFTDIIndex(scannedDevice.scanIndex);
-                ftdiComp->setDevInfo(scannedDevice.devInfo);
-                activeDevices.push_back(std::move(matchedDevice));
-                break;
-            }
+            if(foundDevice.matchData.matchScore <= 2) continue; //Not enough matches
+
+            if constexpr(debug) Debug.Log("MATCH FOUND! Device: ", deviceInfo.deviceName);
+            foundDevice.deviceRegistryEntry = entry;
+            foundDevice.connectionType = FoundDeviceInfo::ConnectionType::FTDI;
+            foundDevice.FTDIScannedDeviceInfo = std::make_unique<FTDIHandler::ScannedDeviceInfo>(scannedDevice);
+            foundDevices.emplace_back(std::move(foundDevice));
+            break;
         }
     }
 }
