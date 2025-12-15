@@ -1,5 +1,5 @@
 #include "LibUsbHandler.hpp"
-#include "debug.hpp"
+
 
 bool LibUsbHandler::initialize() {
     if (ctx) {

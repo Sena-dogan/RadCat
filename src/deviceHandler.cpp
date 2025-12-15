@@ -23,7 +23,7 @@ void DeviceHandler::libUsbScan() {
     std::vector<LibUsbHandler::ScannedDeviceInfo> scannedDevices = libUsbHandler.scanDevices();
     if (scannedDevices.empty()) { if constexpr(debug) Debug.Warn("No LibUsb devices found during scan."); return; }
 
-    for(const LibUsbHandler::ScannedDeviceInfo& info : scannedDevices) { // For each detected LibUsb device
+    for(LibUsbHandler::ScannedDeviceInfo& info : scannedDevices) { // For each detected LibUsb device
         uint16_t vid = info.descriptor.idVendor;
         uint16_t pid = info.descriptor.idProduct;
         
@@ -47,15 +47,15 @@ void DeviceHandler::libUsbScan() {
 
             // VID Check
             if (deviceInfo.vid == vid){
-                foundDevice.vidMatch = true;
-                foundDevice.matchScore++;
+                foundDevice.matchData.vidMatch = true;
+                foundDevice.matchData.matchScore++;
             }
 
             // PID Check
             uint16_t pid = info.descriptor.idProduct;
             if (deviceInfo.pid == 0 && deviceInfo.pid == pid){
-                foundDevice.pidMatch = true;
-                foundDevice.matchScore++;
+                foundDevice.matchData.pidMatch = true;
+                foundDevice.matchData.matchScore++;
             }
 
             //TODO: Serial Number Check
@@ -64,17 +64,17 @@ void DeviceHandler::libUsbScan() {
             std::string foundDeviceName = deviceInfo.deviceName;
             if(foundDeviceName.find(deviceInfo.deviceName) != std::string::npos 
             || deviceInfo.deviceName.find(foundDeviceName) != std::string::npos){
-                foundDevice.nameMatch = true;
-                foundDevice.matchScore++;
+                foundDevice.matchData.nameMatch = true;
+                foundDevice.matchData.matchScore++;
             }
 
-            if(foundDevice.matchScore <= 2) continue; //Not enough matches
+            if(foundDevice.matchData.matchScore <= 2) continue; //Not enough matches
             
             if constexpr(debug) Debug.Log("MATCH FOUND! Device : " , deviceInfo.deviceName);
             foundDevice.connectionType = FoundDeviceInfo::ConnectionType::LibUsb;
             foundDevice.deviceRegistryEntry = entry;
             foundDevice.LibUsbScannedDeviceInfo = std::make_unique<LibUsbHandler::ScannedDeviceInfo>(std::move(info));
-            foundDevices.push_back(foundDevice);
+            foundDevices.emplace_back(std::move(foundDevice));
             break;
         }
     }

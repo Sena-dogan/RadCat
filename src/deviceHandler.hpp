@@ -8,6 +8,16 @@
 
 class DeviceHandler {
 public:
+
+    struct FoundDeviceInfoForUI {
+        bool serialMatch = false;
+        bool nameMatch = false;
+        bool vidMatch = false;
+        bool pidMatch = false;
+        bool modified = false;
+        uint8_t matchScore = 0;
+    };
+
     struct FoundDeviceInfo {
         enum class ConnectionType {
             FTDI,
@@ -17,11 +27,7 @@ public:
         const DeviceRegistry::RegistryEntry* deviceRegistryEntry;
 
         //Matched data types
-        bool serialMatch = false;
-        bool nameMatch = false;
-        bool vidMatch = false;
-        bool pidMatch = false;
-        uint8_t matchScore = 0;
+        FoundDeviceInfoForUI matchData;
 
         //LibUsb Data
         std::unique_ptr<LibUsbHandler::ScannedDeviceInfo> LibUsbScannedDeviceInfo = nullptr;
@@ -29,6 +35,8 @@ public:
         //FTDI Data
 
     };
+
+
     std::vector<FoundDeviceInfo> foundDevices;
     std::vector<std::unique_ptr<EmptyDevice>> activeDevices;
 

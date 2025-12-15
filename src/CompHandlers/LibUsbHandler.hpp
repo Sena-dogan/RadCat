@@ -4,6 +4,7 @@
 #include <vector>
 #include <string>
 #include "UsbConnection.hpp"
+#include "debug.hpp"
 
 class LibUsbHandler : public BaseComponentHandler {
 public:
