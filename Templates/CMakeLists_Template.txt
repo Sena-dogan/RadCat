@@ -13,6 +13,7 @@ set(DIST_DIR "${CMAKE_SOURCE_DIR}/dist")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/dist)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(APP_ICON_RESOURCE "${CMAKE_CURRENT_SOURCE_DIR}/res/radcat.rc")
 foreach(cfg IN ITEMS Debug Release RelWithDebInfo MinSizeRel)
     string(TOUPPER "${cfg}" CFG_UP)
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_${CFG_UP} "${DIST_DIR}")
@@ -27,30 +28,44 @@ file(GLOB_RECURSE SRC_FILES CONFIGURE_DEPENDS
 )
 
 # ---- Create executable target ----
-add_executable(${PROJECT_NAME} ${SRC_FILES})
+if(WIN32)
+    add_executable(${PROJECT_NAME} ${SRC_FILES} ${APP_ICON_RESOURCE})
+else()
+    add_executable(${PROJECT_NAME} ${SRC_FILES})
+endif()
 
 # ---- Include directories ----
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_SOURCE_DIR}/src
-    ${CMAKE_SOURCE_DIR}/src/devices
-    ${CMAKE_SOURCE_DIR}/src/devices/comps
+    ${CMAKE_SOURCE_DIR}/src/Devices
+    ${CMAKE_SOURCE_DIR}/src/Devices/DeviceCoreSystems
+    ${CMAKE_SOURCE_DIR}/src/Components
     ${CMAKE_SOURCE_DIR}/src/CompHandlers
+    ${CMAKE_SOURCE_DIR}/src/UI
 )
+
+# ---- For Mac Whatever ----
+if (APPLE)
+    set(CMAKE_OSX_DEPLOYMENT_TARGET "14.0" CACHE STRING "Minimum OS X deployment version" FORCE)
+    
+    
+endif()
 
 # ---- Get Platform and platform specific includes ----
 if (WIN32)
     target_compile_definitions(${PROJECT_NAME} PRIVATE PLATFORM_WINDOWS)
     target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/src/Included/Windows)
-    target_link_libraries(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/src/libs/ftd2xx.lib) # Link FTDI
+    target_link_libraries(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/libs/ftd2xx.lib) # Link FTDI
     target_link_libraries(${PROJECT_NAME} PRIVATE ws2_32) # Link Winsock
+    target_link_libraries(${PROJECT_NAME} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/libs/libusb-1.0.lib") # Link libusb
 elseif (APPLE)
     target_compile_definitions(${PROJECT_NAME} PRIVATE PLATFORM_MACOS)
     target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/src/Included/Mac)
-    target_link_libraries(${PROJECT_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/src/libs/libftd2xx.dylib") # Link FTDI
+    target_link_libraries(${PROJECT_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/libs/libftd2xx.dylib") # Link FTDI
 else()
     target_compile_definitions(${PROJECT_NAME} PRIVATE PLATFORM_LINUX)
     target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/src/Included/Linux)
-    target_link_libraries(${PROJECT_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/src/libs/libftd2xx.so") # Link FTDI
+    target_link_libraries(${PROJECT_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/libs/libftd2xx.so") # Link FTDI
 endif()
 
 # ---- Dependencies / LIBRARIES ----
@@ -65,9 +80,19 @@ if (WIN32)
 endif()
 
     ## --- Qt ---
-    set(QT_REQUIRED_COMPONENTS Core Gui Widgets)
+    set(QT_REQUIRED_COMPONENTS Core Gui Widgets Qml Quick)
     find_package(Qt6 REQUIRED COMPONENTS ${QT_REQUIRED_COMPONENTS})
-    target_link_libraries(${PROJECT_NAME} PRIVATE Qt6::Core Qt6::Gui Qt6::Widgets)
+    qt_add_resources(RCC_SOURCES res/QTResources.qrc)
+    target_link_libraries(${PROJECT_NAME} PRIVATE Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Qml Qt6::Quick)
+    target_sources(${PROJECT_NAME} PRIVATE ${RCC_SOURCES})
+    set(QT_QML_GENERATE_QMLLS_INI ON)
+
+    qt_add_qml_module(${PROJECT_NAME}
+        URI RadCat
+        VERSION 1.0
+        QML_FILES
+            
+    )
 
     ## --- ROOT ---
     find_package(ROOT REQUIRED)
@@ -82,7 +107,7 @@ if (MSVC)
     # /wd4189 -> local variable is initialized but not referenced
     # This happens when you create a local variable, give it a value, but never use it.
 else()
-    target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -pedantic -Wno-unused-parameter -Wno-unused-variable)
+    target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -pedantic -Wno-unused-parameter -Wno-unused-variable -Wno-pedantic)
 endif()
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON) # IDE

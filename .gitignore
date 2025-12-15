@@ -28,7 +28,7 @@
 # debug information files
 *.dwo
 
-# qml
+# QT
 .qmlls.ini
 
 Build.bat
