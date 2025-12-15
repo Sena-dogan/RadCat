@@ -103,3 +103,5 @@ Build.bat
 
 
 CMakeLists.txt
+build/
+dist/
