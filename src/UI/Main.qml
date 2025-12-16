@@ -49,6 +49,7 @@ ApplicationWindow {
             onClicked: {
                 console.log("Switching to list view.");
                 mainWindow.isScanningMode = true;
+                backend.scan();
             }
         }
     }
@@ -76,7 +77,7 @@ ApplicationWindow {
                 }
             }
             Text {
-                text: "Discovered Devices (3)"
+                text: "Discovered Devices (" + backend.foundDevices.length + ")"
                 color: "white"
                 font.pixelSize: 20
                 font.bold: true
@@ -93,24 +94,10 @@ ApplicationWindow {
             clip: true
             spacing: 15
 
-            // Mock Data Model
-            // Property names here must match 'required property' names in delegate
-            model: ListModel {
-                ListElement {
-                    name: "Gamma Detector A"
-                    status: "match"
-                }
-                ListElement {
-                    name: "Spectrometer X200"
-                    status: "partial"
-                }
-                ListElement {
-                    name: "Unknown USB Device"
-                    status: "mismatch"
-                }
-            }
+            // Real Data Model from Backend
+            model: backend.foundDevices
 
-            // Using the delegate without manual property assignment
+            // Using the delegate
             delegate: DeviceDelegate {}
         }
     }

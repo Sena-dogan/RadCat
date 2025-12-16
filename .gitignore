@@ -66,6 +66,8 @@ Makefile*
 *.prl
 *.res
 *.rc
+.rcc/
+.qt/
 
 # QML Language Server Configuration (Contains absolute paths - DO NOT PUSH)
 .qmlls.ini
@@ -102,6 +104,8 @@ CMakeUserPresets.json
 Build.bat
 
 
-CMakeLists.txt
+#CMakeLists.txt
 build/
 dist/
+CMakeFiles/
+CMakeCache.txt

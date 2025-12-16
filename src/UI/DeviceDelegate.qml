@@ -14,8 +14,12 @@ Item {
         }
     }
 
-    required property string name
-    required property string status
+    required property string deviceName
+    required property int matchScore
+    required property bool serialMatch
+    required property bool nameMatch
+    required property bool vidMatch
+    required property bool pidMatch
 
     property bool isExpanded: false
 
@@ -51,18 +55,17 @@ Item {
                         height: 16
                         radius: 8
                         color: {
-                            // Using the required property 'status' directly
-                            if (root.status === "match")
-                                return "#238636"; // Green
-                            if (root.status === "partial")
-                                return "#d29922"; // Yellow
-                            return "#f85149"; // Red
+                            if (root.matchScore >= 3)
+                                return "#238636"; // Green (High match)
+                            if (root.matchScore >= 1)
+                                return "#d29922"; // Yellow (Partial)
+                            return "#f85149"; // Red (Mismatch)
                         }
                     }
 
                     // Device Name
                     Text {
-                        text: root.name // Using required property 'name'
+                        text: root.deviceName
                         color: "white"
                         font.pixelSize: 16
                         font.bold: true
@@ -72,7 +75,7 @@ Item {
                     // Activate Button
                     Button {
                         id: activateButton
-                        visible: root.status !== "mismatch"
+                        visible: root.matchScore > 1
                         text: "Activate"
 
                         Layout.preferredWidth: 100
@@ -95,7 +98,7 @@ Item {
                             horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter
                         }
-                        onClicked: console.log("Activated: " + root.name)
+                        onClicked: console.log("Activated: " + root.deviceName)
 
                         hoverEnabled: true
                         MouseArea {
@@ -147,13 +150,13 @@ Item {
                         }
                     }
 
-                    // Placeholder details
+                    // Details
                     Text {
-                        text: "Vendor ID: 1234 | Product ID: 5678"
+                        text: "Match Score: " + root.matchScore + "/3"
                         color: "#8b949e"
                     }
                     Text {
-                        text: "Status: " + root.status
+                        text: "Matches: " + (root.vidMatch ? "VID " : "") + (root.pidMatch ? "PID " : "") + (root.nameMatch ? "NAME " : "") + (root.serialMatch ? "SERIAL" : "")
                         color: "#8b949e"
                     }
                 }
