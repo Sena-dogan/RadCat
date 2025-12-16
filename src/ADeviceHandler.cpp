@@ -135,7 +135,7 @@ void DeviceHandler::ftdiScan() {
                 deviceNameLower.find(foundDeviceNameLower) != std::string::npos){
                 foundDevice.matchData.nameMatch = true;
                 foundDevice.matchData.matchScore++;
-                }
+            }
             
             if(foundDevice.matchData.matchScore <= 2) continue; //Not enough matches
 
