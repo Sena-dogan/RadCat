@@ -1,9 +1,6 @@
 #include "FTDIConnection.hpp"
 #include "debug.hpp"
-#include "Utilities.hpp"
 #include "deviceCore.hpp"
-
-using namespace Utilities;
 
 bool FTDIConnection::fConnect() {
     if (connected) return true;
@@ -51,7 +48,7 @@ bool FTDIConnection::openDevice(){
     session = FTDIHandler::Instance().getSession(ftHandle, devInfo);
     FT_ResetDevice(ftHandle); // Reset device to ensure clean state
     FT_Purge(ftHandle, FT_PURGE_RX | FT_PURGE_TX); // Clear RX and TX buffers
-    sleepMs(100); // Wait for device to stabilize
+    std::this_thread::sleep_for(std::chrono::milliseconds(100)); // Wait for device to stabilize
     return true;
 }
 
