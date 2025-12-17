@@ -4,23 +4,52 @@
 #include "../System.hpp"
 
 AppController::AppController(LogicManager *logicManager, QObject *parent)
-    : QObject(parent), m_logicManager(logicManager) {}
+    : QObject(parent), logicManager(logicManager) {
+
+    // ---- Start backend logic thread
+    logicManager = new LogicManager();
+    logicManager->moveToThread(&logicThread);
+
+    // ========================================================= CONNECTS HERE
+
+    // When the logic thread starts, call LogicManager::start
+    connect(&logicThread, &QThread::started, logicManager, &LogicManager::start);
+
+    // Ensure proper shutdown on application exit
+    connect(&app, &QGuiApplication::aboutToQuit, &appController, &AppController::shutdown);
+
+    // Connect shutdown request signal from AppController to LogicManager stop slot
+    connect(this, &AppController::requestShutdownOfLogicThread, logicManager, &LogicManager::stop);
+
+    // Connect scan devices button clicked signal from UI to logic thread slot
+    connect(this, &AppController::scanDevicesButtonClicked, logicManager, &LogicManager::scanDevicesButtonClicked);
+    connect(logicManager, &LogicManager::devicesScanCompleted, this, &AppController::devicesScanCompletedHandler);
+
+
+
+
+
+
+
+
+    logicThread.start();
+    }
 
 void AppController::scan() {
-  if (!m_logicManager || !m_logicManager->system)
+  if (!logicManager || !logicManager->system)
     return;
 
   Debug.Log("UI requested device scan...");
-  m_logicManager->system->deviceHandler.deviceScan();
+  logicManager->system->deviceHandler.deviceScan();
   emit foundDevicesChanged();
 }
 
 QVariantList AppController::foundDevices() const {
   QVariantList list;
-  if (!m_logicManager || !m_logicManager->system)
+  if (!logicManager || !logicManager->system)
     return list;
 
-  const auto &devices = m_logicManager->system->deviceHandler.foundDevices;
+  const auto &devices = logicManager->system->deviceHandler.foundDevices;
 
   // MOCK DATA FOR TESTING
   if (devices.empty()) {
@@ -72,3 +101,16 @@ QVariantList AppController::foundDevices() const {
   }
   return list;
 }
+
+void AppController::shutdown() {
+    Debug.Log("Shutting down AppController and LogicManager...");
+    if (logicManager) {
+      emit requestShutdownOfLogicThread();
+      logicThread.wait();
+    }else{
+      logicThread.quit();
+      logicThread.wait();
+    }
+    Debug.Log("Shutdown complete.");
+}
+

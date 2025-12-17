@@ -7,25 +7,33 @@
 #include <QQmlContext>
 #include <QQuickStyle>
 
+
+void registerQMLTypes() {
+  //Singleteon for Backend
+  qmlRegisterSingletonType<AppController>(
+    "App", 1, 0, "AppController",
+    [](QQmlEngine*, QJSEngine*) -> QObject* {
+        return new AppController;
+    }
+  );
+
+
+}
+
 int main(int argc, char *argv[]) {
+
   QQuickStyle::setStyle("Basic");
+
   QGuiApplication app(argc, argv);
 
-  // Initialize Logic
-  LogicManager logicManager;
-  logicManager.start();
-
-  // Initialize AppController
-  AppController appController(&logicManager);
+  registerQMLTypes();
 
   QQmlApplicationEngine engine;
-
-  // Expose AppController to QML
-  engine.rootContext()->setContextProperty("backend", &appController);
 
   QObject::connect(
       &engine, &QQmlApplicationEngine::objectCreationFailed, &app,
       []() { QCoreApplication::exit(-1); }, Qt::QueuedConnection);
+
   engine.load(QUrl("qrc:/RadCat/src/UI/Main.qml"));
 
   return app.exec();
