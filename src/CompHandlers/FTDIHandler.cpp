@@ -2,9 +2,6 @@
 #include "Debug.hpp"
 #include <thread>
 #include <chrono>
-#include "Utilities.hpp"
-using namespace Utilities;
-
 
 bool FTDIHandler::initialize() {
    
@@ -102,7 +99,7 @@ bool FTDIHandler::DeviceSession::pollData(DWORD bytesToRead, DWORD& bytesRead, i
             if (bytesRead > bytesToRead) bytesRead = bytesToRead;
         }
         if (bytesRead >= bytesToRead) break;
-        sleepMs(pollInterval);
+        std::this_thread::sleep_for(std::chrono::milliseconds(pollInterval));
         elapsed += pollInterval;
     }
 
@@ -135,17 +132,17 @@ bool FTDIHandler::DeviceSession::openMPSSE() {
     FT_SetLatencyTimer(ftHandle, 4); //4ms
     FT_SetTimeouts(ftHandle, 40, 40); //40ms read/write timeouts
     FT_SetFlowControl(ftHandle, FT_FLOW_RTS_CTS, 0, 0);
-    sleepMs(20);
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
 
     status = FT_SetBitMode(ftHandle, 0x0, 0x02);  //enable MPSSE 
     if(status != FT_OK){Debug.Error("Failed to enable MPSSE: " + std::to_string(status)); return false;}
-    sleepMs(20);
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
     FT_Purge(ftHandle, FT_PURGE_RX | FT_PURGE_TX);
 
     //Test MPSSE by sending command 0xAA and expecting response 0xFA 0xAA
     tx[0] = 0xAA;
     FT_Write(ftHandle, tx, 1, &ret_bytes);
-    sleepMs(20);
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
     FT_Read(ftHandle, rx, 2, &ret_bytes);
     // Expect: 0xFA 0xAA back
     if (ret_bytes == 2 && rx[0] == 0xFA && rx[1] == 0xAA) { if constexpr (FTDIHandler::debug) Debug.Log("MPSSE ENGINE OK."); }

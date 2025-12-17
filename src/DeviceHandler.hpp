@@ -33,7 +33,7 @@ public:
         std::unique_ptr<LibUsbHandler::ScannedDeviceInfo> LibUsbScannedDeviceInfo = nullptr;
 
         //FTDI Data
-
+        std::unique_ptr<FTDIHandler::ScannedDeviceInfo> FTDIScannedDeviceInfo = nullptr;
     };
 
 

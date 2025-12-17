@@ -1,11 +1,9 @@
 #include "MinixDevice.hpp"
 #include "ftd2xx.h"
 #include "Debug.hpp"
-#include "Utilities.hpp"
 
 REGISTER_DEVICE(MiniXDevice,"Mini-X");
 using namespace std;
-using namespace Utilities;
 
 #pragma region Bit Definitions
 
@@ -127,7 +125,7 @@ bool MiniXDevice::initialize() {
     
 
     //setVoltage(0.0);
-    //sleepMs(200);
+    //this_thread::sleep_for(chrono::milliseconds(200));
     //setCurrent(0.0);
 
     if constexpr (debug) Debug.Log("MiniX initialization completed successfully.");
@@ -235,13 +233,11 @@ double MiniXDevice::readVoltage() {
     if (status != FT_OK) {Debug.Error("HV ADC write command error: ", status);return -1.0;}
     if (status == FT_OK) {Debug.Log("HV ADC write command sent successfully.");}
 
-    sleepMs(50);
+    this_thread::sleep_for(chrono::milliseconds(50));
 
-    // Read the reply and checksum validation
     status = connection.receiveData(rx, 2, ret_bytes);
     if (status != FT_OK) {Debug.Error("HV ADC read data status error: ", status);return -1.0;}
     if (ret_bytes < 2) {Debug.Error("HV ADC too few data bytes returned: ", ret_bytes);return -1.0;}
-    if (!Utilities::validateAndLogData(rx, 2, "HV ADC")) {return -1.0;}
 
     // Convert ADC result to voltage (bit manipulation handled in utility)
     double voltage = convertToVoltage(rx[0], rx[1]);
@@ -288,13 +284,12 @@ double MiniXDevice::readCurrent() {
     FT_STATUS status = connection.sendData(tx, pos);
     if (status != FT_OK) {Debug.Error("Current ADC write command error: ", status);return -1.0;}
     if constexpr (debug) Debug.Log("Current ADC write command sent successfully.");
-    sleepMs(200);
+    this_thread::sleep_for(chrono::milliseconds(200));
 
     // Read the reply
     status = connection.receiveData(rx, 2, ret_bytes);
     if (status != FT_OK) {Debug.Error("Current ADC read data status error: ", status);return -1.0;}
     if (ret_bytes < 2) {Debug.Error("Current ADC too few data bytes returned: ", ret_bytes);return -1.0;}
-    if (!Utilities::validateAndLogData(rx, 2, "Current ADC")) {return -1.0;}
 
     double current = convertToCurrent(rx[0], rx[1]);
 
@@ -336,12 +331,11 @@ double MiniXDevice::readTemperature() {
     FT_STATUS status = connection.sendData(tx, pos);
     if (status != FT_OK) {Debug.Error("Temperature sensor write command error: ", status);return -1.0;}
     if constexpr (debug) Debug.Log("Temperature sensor write command sent successfully.");
-    sleepMs(50);
+    this_thread::sleep_for(chrono::milliseconds());
 
     status = connection.receiveData(rx, 2, ret_bytes);
     if (status != FT_OK) {Debug.Error("Temperature sensor read data status error: ", status);return -1.0;}
     if (ret_bytes < 2) {Debug.Error("Temperature sensor too few data bytes returned: ", ret_bytes);return -1.0;}
-    if (!Utilities::validateAndLogData(rx, 2, "Temperature Sensor")) {return -1.0;}
     // Process temperature result (different from ADC - direct MSB/LSB)
     double temperature = convertToTemperature(rx[1], rx[0], false); // Celsius
     if constexpr (debug) Debug.Log("Read temperature: " + std::to_string(temperature) + " C");
