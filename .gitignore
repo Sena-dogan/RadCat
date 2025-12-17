@@ -104,8 +104,15 @@ CMakeUserPresets.json
 Build.bat
 
 
-#CMakeLists.txt
+CMakeLists.txt
 build/
 dist/
 CMakeFiles/
 CMakeCache.txt
+qmltypes/
+meta_types/
+RadCat/
+RadCat_autogen/
+src/devices/
+CMakeCache.txt
+cmake_install.cmake

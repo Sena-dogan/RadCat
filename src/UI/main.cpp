@@ -1,5 +1,6 @@
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
+#include <QThread>
 #include <QUrl>
 
 #include "../LogicThread.hpp"
@@ -12,11 +13,27 @@ int main(int argc, char *argv[]) {
   QGuiApplication app(argc, argv);
 
   // Initialize Logic
-  LogicManager logicManager;
-  logicManager.start();
+  // Initialize Logic (Worker)
+  LogicManager *logicManager = new LogicManager();
+  QThread *workerThread = new QThread();
+  logicManager->moveToThread(workerThread);
 
-  // Initialize AppController
-  AppController appController(&logicManager);
+  // Initialize AppController (UI)
+  AppController appController;
+
+  // Connect Logic <-> UI
+  QObject::connect(workerThread, &QThread::started, logicManager, &LogicManager::start);
+  QObject::connect(&appController, &AppController::requestScan, logicManager, &LogicManager::scanDevices);
+  QObject::connect(logicManager, &LogicManager::devicesFound, &appController, &AppController::onDevicesFound);
+  QObject::connect(&app, &QGuiApplication::aboutToQuit, [&]() {
+      logicManager->stop(); // Tell logic to stop
+      workerThread->quit(); // Tell thread to quit
+      workerThread->wait(); // Wait for it
+      delete logicManager;
+      delete workerThread;
+  });
+
+  workerThread->start();
 
   QQmlApplicationEngine engine;
 

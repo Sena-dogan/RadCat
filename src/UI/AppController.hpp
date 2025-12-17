@@ -1,6 +1,3 @@
-#pragma once
-
-#include "../LogicThread.hpp"
 #include <QObject>
 #include <QVariantList>
 
@@ -10,16 +7,18 @@ class AppController : public QObject {
       QVariantList foundDevices READ foundDevices NOTIFY foundDevicesChanged)
 
 public:
-  explicit AppController(LogicManager *logicManager, QObject *parent = nullptr);
+  explicit AppController(QObject *parent = nullptr);
 
   QVariantList foundDevices() const;
 
 public slots:
   void scan();
+  void onDevicesFound(const QVariantList& devices);
 
 signals:
   void foundDevicesChanged();
+  void requestScan();
 
 private:
-  LogicManager *m_logicManager;
+  QVariantList m_foundDevices;
 };

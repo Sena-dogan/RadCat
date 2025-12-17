@@ -13,6 +13,7 @@ void DeviceHandler::deviceLogicUpdate() {
 // Matched devices are instantiated and added to the activeDevices list. Yet they are not connected automatically.
 // Neither their automation starts, they are waiting for explicit connect() calls by the UI. This only sets up the devices and UI entries.
 void DeviceHandler::deviceScan() {
+    foundDevices.clear();
     ftdiScan();
     libUsbScan();
 }
