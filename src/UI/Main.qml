@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import RadCat as RadCat
+import RadCat 1.0 as RadCat
 
 ApplicationWindow {
     id: mainWindow

@@ -28,6 +28,14 @@ AppController::AppController(QObject *parent) : QObject(parent) {
   m_logicThread.start();
 }
 
+AppController::~AppController() {
+  shutdown();
+  if (m_logicManager) {
+    delete m_logicManager;
+    m_logicManager = nullptr;
+  }
+}
+
 void AppController::scanButtonPressed() {
   Debug.Log("UI requested device scan...");
   emit requestScan();
