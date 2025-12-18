@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import RadCat
+import RadCat as RadCat
 
 ApplicationWindow {
     id: mainWindow
@@ -49,7 +49,7 @@ ApplicationWindow {
             onClicked: {
                 console.log("Switching to list view.");
                 mainWindow.isScanningMode = true;
-                backend.scan();
+                RadCat.AppController.scanButtonPressed();
             }
         }
     }
@@ -77,7 +77,7 @@ ApplicationWindow {
                 }
             }
             Text {
-                text: "Discovered Devices (" + backend.foundDevices.length + ")"
+                text: "Discovered Devices (" + RadCat.AppController.foundDevices.length + ")"
                 color: "white"
                 font.pixelSize: 20
                 font.bold: true
@@ -95,7 +95,7 @@ ApplicationWindow {
             spacing: 15
 
             // Real Data Model from Backend
-            model: backend.foundDevices
+            model: RadCat.AppController.foundDevices
 
             // Using the delegate
             delegate: DeviceDelegate {}

@@ -1,9 +1,8 @@
 #include "FTDIConnection.hpp"
 #include "Debug.hpp"
-#include "Utilities.hpp"
 #include "DeviceCore.hpp"
-
-using namespace Utilities;
+#include <thread>
+#include <chrono>
 
 bool FTDIConnection::fConnect() {
     if (connected) return true;

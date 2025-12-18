@@ -1,4 +1,6 @@
+#include "LogicThread.hpp"
 #include <QObject>
+#include <QThread>
 #include <QVariantList>
 
 class AppController : public QObject {
@@ -12,13 +14,18 @@ public:
   QVariantList foundDevices() const;
 
 public slots:
-  void scan();
-  void onDevicesFound(const QVariantList& devices);
+  void scanButtonPressed();
+  void shutdown();
+  void onDevicesFound(const QVariantList &devices);
 
 signals:
+  // TODO: Connect foundDevicesChanged later
   void foundDevicesChanged();
   void requestScan();
+  void requestShutdownOfLogicThread();
 
 private:
   QVariantList m_foundDevices;
+  LogicManager *m_logicManager;
+  QThread m_logicThread;
 };

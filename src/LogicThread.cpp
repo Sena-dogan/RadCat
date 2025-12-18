@@ -2,10 +2,8 @@
 #include <QTimer>
 #include <QThread>
 #include <QDebug>
-#include "System.hpp"
 
 void LogicManager::start() {
-    system = new System();
     QTimer* timer = new QTimer(this); 
     connect(timer, &QTimer::timeout, this, &LogicManager::mainLoop); 
     timer->start(0); 
@@ -19,20 +17,19 @@ void LogicManager::stop() { QThread::currentThread()->quit();}
 
 //
 void LogicManager::mainLoop() {
-    if (system->isRunning) {
-        system->logic();
+    if (system.isRunning) {
+        system.logic();
     } else {
         QThread::currentThread()->quit();
     }
 }
 
-void LogicManager::scanDevices() {
-    if (!system) return;
+void LogicManager::scanDevicesButtonPressed() {
 
-    system->deviceHandler.deviceScan();
+    system.deviceHandler.deviceScan();
 
     QVariantList newList;
-    const auto &devices = system->deviceHandler.foundDevices;
+    const auto &devices = system.deviceHandler.foundDevices;
 
     for (const auto &dev : devices) {
         QVariantMap map;
@@ -78,6 +75,6 @@ void LogicManager::scanDevices() {
 
     if (newList != m_lastScanResults) {
         m_lastScanResults = newList;
-        emit devicesFound(newList);
+        emit deviceScanCompleted(newList);
     }
 }
