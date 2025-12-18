@@ -1,7 +1,7 @@
 #pragma once
 #include <ftd2xx.h>
 #include <string>
-#include "componentCore.hpp"
+#include "ComponentCore.hpp"
 #include "FTDIHandler.hpp"
 
 COMPONENT class FTDIConnection : public BaseComponent {

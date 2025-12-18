@@ -1,6 +1,8 @@
-#include "MiniXDevice.hpp"
+#include "MinixDevice.hpp"
 #include "ftd2xx.h"
 #include "Debug.hpp"
+#include <chrono>
+#include <thread>
 
 REGISTER_DEVICE(MiniXDevice,"Mini-X");
 using namespace std;

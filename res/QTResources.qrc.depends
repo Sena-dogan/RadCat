@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/ress">
+        <file>RadCat.png</file>
+    </qresource>
+</RCC>

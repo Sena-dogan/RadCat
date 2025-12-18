@@ -1,18 +1,46 @@
-# Prerequisites
+# ----------------------------------------------------------------------------
+# OS Generated Files (Operating System Junk)
+# ----------------------------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# ----------------------------------------------------------------------------
+# Build Directories & Artifacts
+# ----------------------------------------------------------------------------
+# Ignore all build directories (build, build_terminal, build-debug, etc.)
+build*/
+/build/
+
+# Prerequisites & Dependency Files (From main project)
 *.d
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
 
 # Precompiled Headers
 *.gch
 *.pch
 
-# Linker files
+# Linker & Debugger Files
 *.ilk
-
-# Debugger Files
 *.pdb
+*.dwo
+*.dSYM/
 
+# ----------------------------------------------------------------------------
+# Libraries & Executables
+# ----------------------------------------------------------------------------
 # Compiled Dynamic libraries
 *.so
+*.so.*
 *.dylib
 
 # Compiled Static libraries
@@ -20,19 +48,71 @@
 *.la
 *.a
 
-# Executables
+# Executables and Application Bundles
 *.exe
 *.out
-*.app
+*.app/
 
-# debug information files
-*.dwo
+# ----------------------------------------------------------------------------
+# Qt & QML Specifics
+# ----------------------------------------------------------------------------
+# Generated C++ files from Qt (MOC, UIC, RCC)
+moc_*.cpp
+ui_*.h
+qrc_*.cpp
+Makefile*
+*.moc
+*.qm
+*.prl
+*.res
+*.rc
+.rcc/
+.qt/
 
-# QT
+# QML Language Server Configuration (Contains absolute paths - DO NOT PUSH)
 .qmlls.ini
+.qmlls.json
 
-Build.bat
-CMakeLists.txt
+# ----------------------------------------------------------------------------
+# IDE & Editor Configuration
+# ----------------------------------------------------------------------------
+# Visual Studio Code (User settings)
 .vscode/
+
+# Qt Creator (User settings)
+*.pro.user
+*.pro.user.*
+*.qbs.user
+*.qbs.user.*
+CMakeLists.txt.user*
+
+# CMake User Presets (Contains personal paths)
+CMakeUserPresets.json
+
+# Vim / Emacs / Sublime temporary files
+*~
+*.swp
+*.swo
+*.autosave
+
+# CMake Cache
+.cache/
+
+# ----------------------------------------------------------------------------
+# Specific Project Files (From main project)
+# ----------------------------------------------------------------------------
+Build.bat
+
+
+CMakeLists.txt
 build/
 dist/
+CMakeFiles/
+CMakeCache.txt
+qmltypes/
+meta_types/
+RadCat/
+RadCat_autogen/
+src/devices/
+CMakeCache.txt
+cmake_install.cmake
