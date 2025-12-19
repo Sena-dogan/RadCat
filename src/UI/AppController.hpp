@@ -2,16 +2,19 @@
 #include <QObject>
 #include <QThread>
 #include <QVariantList>
+#include <QQmlEngine>
 
-class AppController : public QObject {
+class AppController : public QObject
+{
   Q_OBJECT
-  Q_PROPERTY(
-      QVariantList foundDevices READ foundDevices NOTIFY foundDevicesChanged)
+  QML_ELEMENT
+  QML_SINGLETON
 
 public:
   explicit AppController(QObject *parent = nullptr);
   ~AppController() override;
 
+  Q_PROPERTY(QVariantList foundDevices READ foundDevices NOTIFY foundDevicesChanged)
   QVariantList foundDevices() const;
 
 public slots:
